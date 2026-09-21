@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panchería POS - Sistema de Ventas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilo para barra de desplazamiento limpia */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ENCABEZADO -->
+  <header class="bg-amber-500 text-slate-900 px-6 py-4 shadow-md flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <span class="text-3xl">🌭</span>
+      <div>
+        <h1 class="text-xl font-extrabold tracking-tight">Panchería Express POS</h1>
+        <p class="text-xs font-semibold text-amber-950 opacity-80">Terminal de Mostrador & Salón</p>
+      </div>
+    </div>
+    <button onclick="toggleCierreModal()" class="bg-slate-900 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-xl shadow hover:bg-slate-800 transition">
+      📊 Cierre de Caja
+    </button>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
+
+    <!-- COLUMNA IZQUIERDA: CATÁLOGO Y STOCK (7 cols) -->
+    <main class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- PANEL DE STOCK -->
+      <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Inventario en Vivo</h2>
+        <div class="grid grid-cols-3 gap-3" id="panel-stock">
+          <!-- Inyectado por JS -->
+        </div>
+      </section>
+
+      <!-- CATÁLOGO DE PRODUCTOS -->
+      <section>
+        <h2 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Productos Disponibles</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="catalogo-grid">
+          <!-- Inyectado por JS -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- COLUMNA DERECHA: ORDEN Y COBRO (5 cols) -->
+    <aside class="lg:col-span-5 bg-white rounded-2xl shadow-lg border border-slate-200 p-5 flex flex-col justify-between">
+      
+      <div>
+        <!-- SELECTOR MODALIDAD -->
+        <div class="flex bg-slate-100 p-1 rounded-xl mb-4 text-xs font-bold">
+          <button id="btn-takeaway" onclick="setModalidad('Take Away')" class="flex-1 py-2 rounded-lg bg-amber-500 text-slate-950 shadow-sm transition">
+            🥡 Take Away
+          </button>
+          <button id="btn-salon" onclick="setModalidad('Salón')" class="flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            🍽️ Salón / Mesa
+          </button>
+        </div>
+
+        <!-- CONFIGURACIÓN DE MESA (Condicional) -->
+        <div id="datos-salon" class="hidden grid-cols-2 gap-2 mb-4 bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs">
+          <div>
+            <label class="block font-bold text-amber-900 mb-1">N° de Mesa:</label>
+            <input type="number" id="input-mesa" value="1" min="1" class="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-bold text-slate-800" />
+          </div>
+          <div>
+            <label class="block font-bold text-amber-900 mb-1">Comensales:</label>
+            <input type="number" id="input-comensales" value="2" min="1" class="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-bold text-slate-800" />
+          </div>
+        </div>
+
+        <!-- DETALLE DEL CARRITO -->
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Orden Actual</h3>
+        <div id="carrito-items" class="divide-y divide-slate-100 max-h-52 overflow-y-auto mb-4 pr-1">
+          <p class="text-xs text-slate-400 italic py-4 text-center">No hay productos agregados.</p>
+        </div>
+      </div>
+
+      <!-- SECCIÓN DE COBRO Y CIERRE DE TICKET -->
+      <div class="border-t border-slate-200 pt-4 mt-auto">
+        <!-- TOTAL -->
+        <div class="flex justify-between items-baseline mb-3">
+          <span class="text-sm font-bold text-slate-500 uppercase">Total a Pagar</span>
+          <span class="text-2xl font-black text-slate-900" id="monto-total">$0</span>
+        </div>
+
+        <!-- FORMA DE PAGO -->
+        <div class="grid grid-cols-3 gap-1 mb-3 text-xs font-semibold">
+          <button onclick="setMetodoPago('Efectivo')" class="metodo-btn py-1.5 rounded-lg border border-amber-500 bg-amber-50 text-amber-900" data-metodo="Efectivo">Efectivo</button>
+          <button onclick="setMetodoPago('Mercado Pago')" class="metodo-btn py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600" data-metodo="Mercado Pago">Mercado Pago</button>
+          <button onclick="setMetodoPago('Transferencia')" class="metodo-btn py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600" data-metodo="Transferencia">Transf.</button>
+        </div>
+
+        <!-- CÁLCULO DE VUELTO -->
+        <div class="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div class="flex justify-between items-center text-xs mb-1">
+            <span class="font-bold text-slate-600">Abona con ($):</span>
+            <input type="number" id="input-abona" oninput="calcularVuelto()" placeholder="0" class="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold text-slate-900" />
+          </div>
+          <div class="flex justify-between items-center text-xs font-bold pt-1 border-t border-slate-200">
+            <span class="text-slate-500">Vuelto:</span>
+            <span id="label-vuelto" class="text-slate-900">$0</span>
+          </div>
+        </div>
+
+        <!-- BOTÓN FINALIZAR -->
+        <div class="flex gap-2">
+          <button onclick="cancelarOrden()" class="w-1/3 bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-xs hover:bg-slate-300 transition">
+            Cancelar
+          </button>
+          <button onclick="cobrarOrden()" class="w-2/3 bg-amber-500 text-slate-950 font-black py-3 rounded-xl text-sm hover:bg-amber-400 shadow-md transition">
+            Confirmar y Cobrar
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- MODAL: CIERRE DE CAJA -->
+  <div id="modal-cierre" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <h3 class="text-lg font-black text-slate-900 mb-1">📊 Cierre de Caja del Día</h3>
+      <p class="text-xs text-slate-500 mb-4">Resumen acumulado de ventas</p>
+
+      <div class="space-y-2 text-xs border-y border-slate-100 py-3 mb-4">
+        <div class="flex justify-between">
+          <span class="text-slate-600">Total Facturado:</span>
+          <span class="font-black text-slate-900 text-sm" id="cierre-facturado">$0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-600">Órdenes Despachadas:</span>
+          <span class="font-bold text-slate-900" id="cierre-ordenes">0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-600">Ticket Promedio:</span>
+          <span class="font-bold text-slate-900" id="cierre-promedio">$0</span>
+        </div>
+      </div>
+
+      <button onclick="toggleCierreModal()" class="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl">
+        Cerrar Ventana
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 1. ESTADO DE LA APLICACIÓN
+    const CATALOGO = [
+      { id: 1, nombre: "Pancho Clásico", precio: 1500, esPancho: true },
+      { id: 2, nombre: "Super Pancho", precio: 2200, esPancho: true },
+      { id: 3, nombre: "Cheddar & Bacon", precio: 2800, esPancho: true },
+      { id: 4, nombre: "Papas Fritas", precio: 1800, esPancho: false },
+      { id: 5, nombre: "Gaseosa 500ml", precio: 1200, esPancho: false },
+      { id: 6, nombre: "Cerveza Lata", precio: 1800, esPancho: false }
+    ];
+
+    let stock = {
+      salchichas: 40,
+      panes: 40,
+      aderezo_g: 1200
+    };
+
+    let carrito = {}; // { id: cantidad }
+    let modalidad = "Take Away";
+    let metodoPago = "Efectivo";
+
+    let ventasHistorial = [];
+
+    // 2. RENDERIZAR INTERFAZ
+    function renderStock() {
+      const panel = document.getElementById("panel-stock");
+      panel.innerHTML = `
+        <div class="p-2 rounded-xl border ${stock.salchichas <= 10 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}">
+          <div class="text-[10px] font-bold text-slate-500">Salchichas</div>
+          <div class="text-lg font-black ${stock.salchichas <= 10 ? 'text-red-600' : 'text-slate-800'}">${stock.salchichas} u.</div>
+          ${stock.salchichas <= 10 ? '<span class="text-[9px] font-bold bg-red-200 text-red-800 px-1.5 py-0.5 rounded">¡Crítico!</span>' : ''}
+        </div>
+        <div class="p-2 rounded-xl border ${stock.panes <= 10 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}">
+          <div class="text-[10px] font-bold text-slate-500">Panes</div>
+          <div class="text-lg font-black ${stock.panes <= 10 ? 'text-red-600' : 'text-slate-800'}">${stock.panes} u.</div>
+          ${stock.panes <= 10 ? '<span class="text-[9px] font-bold bg-red-200 text-red-800 px-1.5 py-0.5 rounded">¡Crítico!</span>' : ''}
+        </div>
+        <div class="p-2 rounded-xl border ${stock.aderezo_g <= 300 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}">
+          <div class="text-[10px] font-bold text-slate-500">Aderezos</div>
+          <div class="text-lg font-black ${stock.aderezo_g <= 300 ? 'text-red-600' : 'text-slate-800'}">${stock.aderezo_g} g</div>
+          ${stock.aderezo_g <= 300 ? '<span class="text-[9px] font-bold bg-red-200 text-red-800 px-1.5 py-0.5 rounded">¡Crítico!</span>' : ''}
+        </div>
+      `;
+    }
+
+    function renderCatalogo() {
+      const grid = document.getElementById("catalogo-grid");
+      grid.innerHTML = CATALOGO.map(prod => `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:border-amber-400 transition shadow-sm">
+          <div>
+            <span class="text-xs font-black text-slate-800 block">${prod.nombre}</span>
+            <span class="text-xs font-extrabold text-amber-600">$${prod.precio.toLocaleString()}</span>
+          </div>
+          <button onclick="agregarItem(${prod.id})" class="mt-3 bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-white text-xs font-bold py-1.5 rounded-lg transition">
+            + Agregar
+          </button>
+        </div>
+      `).join("");
+    }
+
+    function renderCarrito() {
+      const cont = document.getElementById("carrito-items");
+      const itemsKeys = Object.keys(carrito);
+
+      if (itemsKeys.length === 0) {
+        cont.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">No hay productos agregados.</p>`;
+        document.getElementById("monto-total").innerText = "$0";
+        calcularVuelto();
+        return;
+      }
+
+      let total = 0;
+      cont.innerHTML = itemsKeys.map(id => {
+        const prod = CATALOGO.find(p => p.id == id);
+        const cant = carrito[id];
+        const subtotal = prod.precio * cant;
+        total += subtotal;
+
+        return `
+          <div class="flex justify-between items-center py-2 text-xs">
+            <div>
+              <div class="font-bold text-slate-800">${prod.nombre}</div>
+              <div class="text-[10px] text-slate-400">${cant} x $${prod.precio.toLocaleString()} = $${subtotal.toLocaleString()}</div>
+            </div>
+            <div class="flex items-center space-x-1">
+              <button onclick="restarItem(${prod.id})" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold">-</button>
+              <span class="font-black px-1">${cant}</span>
+              <button onclick="agregarItem(${prod.id})" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold">+</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("monto-total").innerText = `$${total.toLocaleString()}`;
+      calcularVuelto();
+    }
+
+    // 3. ACCIONES DE COMPRA
+    function agregarItem(id) {
+      carrito[id] = (carrito[id] || 0) + 1;
+      renderCarrito();
+    }
+
+    function restarItem(id) {
+      if (!carrito[id]) return;
+      carrito[id]--;
+      if (carrito[id] <= 0) delete carrito[id];
+      renderCarrito();
+    }
+
+    function setModalidad(mod) {
+      modalidad = mod;
+      const btnTake = document.getElementById("btn-takeaway");
+      const btnSalon = document.getElementById("btn-salon");
+      const secSalon = document.getElementById("datos-salon");
+
+      if (mod === "Take Away") {
+        btnTake.className = "flex-1 py-2 rounded-lg bg-amber-500 text-slate-950 shadow-sm transition";
+        btnSalon.className = "flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition";
+        secSalon.classList.add("hidden");
+        secSalon.classList.remove("grid");
+      } else {
+        btnSalon.className = "flex-1 py-2 rounded-lg bg-amber-500 text-slate-950 shadow-sm transition";
+        btnTake.className = "flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition";
+        secSalon.classList.remove("hidden");
+        secSalon.classList.add("grid");
+      }
+    }
+
+    function setMetodoPago(metodo) {
+      metodoPago = metodo;
+      document.querySelectorAll(".metodo-btn").forEach(btn => {
+        if (btn.dataset.metodo === metodo) {
+          btn.className = "metodo-btn py-1.5 rounded-lg border border-amber-500 bg-amber-50 text-amber-900";
+        } else {
+          btn.className = "metodo-btn py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600";
+        }
+      });
+    }
+
+    function getTotalActual() {
+      return Object.keys(carrito).reduce((acc, id) => {
+        const prod = CATALOGO.find(p => p.id == id);
+        return acc + (prod.precio * carrito[id]);
+      }, 0);
+    }
+
+    function calcularVuelto() {
+      const total = getTotalActual();
+      const abona = parseFloat(document.getElementById("input-abona").value) || 0;
+      const vueltoLabel = document.getElementById("label-vuelto");
+
+      if (abona >= total && total > 0) {
+        vueltoLabel.innerText = `$${(abona - total).toLocaleString()}`;
+        vueltoLabel.className = "text-emerald-600 font-black";
+      } else if (abona > 0 && abona < total) {
+        vueltoLabel.innerText = `Faltan $${(total - abona).toLocaleString()}`;
+        vueltoLabel.className = "text-red-500 font-bold";
+      } else {
+        vueltoLabel.innerText = "$0";
+        vueltoLabel.className = "text-slate-900";
+      }
+    }
+
+    function cancelarOrden() {
+      carrito = {};
+      document.getElementById("input-abona").value = "";
+      renderCarrito();
+    }
+
+    function cobrarOrden() {
+      const total = getTotalActual();
+      if (total === 0) {
+        alert("Agregá al menos un ítem a la orden.");
+        return;
+      }
+
+      // Calcular panchos vendidos para descontar stock
+      let panchosEnOrden = 0;
+      Object.keys(carrito).forEach(id => {
+        const prod = CATALOGO.find(p => p.id == id);
+        if (prod.esPancho) panchosEnOrden += carrito[id];
+      });
+
+      // Descontar inventario
+      stock.salchichas -= panchosEnOrden;
+      stock.panes -= panchosEnOrden;
+      stock.aderezo_g -= (panchosEnOrden * 30);
+
+      // Guardar venta
+      ventasHistorial.push({
+        total: total,
+        modalidad: modalidad,
+        metodo: metodoPago,
+        fecha: new Date().toLocaleTimeString()
+      });
+
+      alert(`✅ ¡Cobro de $${total.toLocaleString()} confirmado!`);
+
+      // Reset
+      cancelarOrden();
+      renderStock();
+    }
+
+    function toggleCierreModal() {
+      const modal = document.getElementById("modal-cierre");
+      modal.classList.toggle("hidden");
+
+      if (!modal.classList.contains("hidden")) {
+        const totalVendido = ventasHistorial.reduce((acc, v) => acc + v.total, 0);
+        const cantOrdenes = ventasHistorial.length;
+        const promedio = cantOrdenes > 0 ? (totalVendido / cantOrdenes) : 0;
+
+        document.getElementById("cierre-facturado").innerText = `$${totalVendido.toLocaleString()}`;
+        document.getElementById("cierre-ordenes").innerText = cantOrdenes;
+        document.getElementById("cierre-promedio").innerText = `$${Math.round(promedio).toLocaleString()}`;
+      }
+    }
+
+    // Inicializar
+    renderStock();
+    renderCatalogo();
+    renderCarrito();
+  </script>
+</body>
+</html>
