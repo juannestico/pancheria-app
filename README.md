@@ -5,7 +5,7 @@ Prototipo funcional (MVP) de un sistema de punto de venta (POS) y gestión de in
 ---
 
 ## 🚀 Demo en Vivo
-> **Probar la aplicación web interactiva:** https://profound-salamander-027d51.netlify.app/
+> **Probar la aplicación web interactiva:** https://testpanchito.netlify.app
 
 ## 🛠️ Características Principales
 
